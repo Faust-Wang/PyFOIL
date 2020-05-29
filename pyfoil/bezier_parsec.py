@@ -1,6 +1,8 @@
+from typing import List, Tuple, Union
+
 import numpy as np
 from scipy.optimize import fsolve
-from typing import NoReturn, Union
+from .utils.bezier import curve, dcurve
 
 
 class BP3333:
@@ -21,20 +23,135 @@ class BP3333:
         self.b1 = self._calculate_b1()
         self.b9 = self._calculate_b9()
 
-    def cp_lt(self) -> NoReturn:
-        raise NotImplementedError('BP3333::cp_lt()')
+    def cp_lt(self) -> List[List[float]]:
 
-    def cp_tt(self) -> NoReturn:
-        raise NotImplementedError('BP3333::cp_tt()')
+        x0 = 0
+        x1 = 0
+        x2 = self.b9
+        x3 = self.params['x_t']
 
-    def cp_lc(self) -> NoReturn:
-        raise NotImplementedError('BP3333::cp_lc()')
+        y0 = 0
+        y1 = (3 * self.params['k_t'] *
+              (self.params['x_t'] - self.b9) ** 2 / 2 + self.params['y_t'])
+        y2 = self.params['y_t']
+        y3 = self.params['y_t']
 
-    def cp_tc(self) -> NoReturn:
-        raise NotImplementedError('BP3333::cp_tc()')
+        cps = [
+            [x0, y0],
+            [x1, y1],
+            [x2, y2],
+            [x3, y3]
+        ]
 
-    def generate(self) -> NoReturn:
-        raise NotImplementedError('BP3333::generate()')
+        return cps
+
+    def cp_tt(self) -> List[List[float]]:
+
+        x0 = self.params['x_t']
+        x1 = 2 * self.params['x_t'] - self.b9
+        x2 = 1 + (self.params['dz_te'] - (
+                3 * self.params['k_t'] *
+                (self.params['x_t'] - self.b9) ** 2 / 2 + self.params['y_t']
+        )) / np.tan(self.params['beta_te'])
+        x3 = 1
+
+        y0 = self.params['y_t']
+        y1 = self.params['y_t']
+        y2 = (3 * self.params['k_t'] *
+              (self.params['x_t'] - self.b9) ** 2 / 2 + self.params['y_t'])
+        y3 = self.params['dz_te']
+
+        cps = [
+            [x0, y0],
+            [x1, y1],
+            [x2, y2],
+            [x3, y3]
+        ]
+
+        return cps
+
+    def cp_lc(self) -> List[List[float]]:
+
+        x0 = 0
+        x1 = self.b1 * np.tan(self.params['gamma_le']) ** -1
+        x2 = self.params['x_c'] - (
+                2 * (self.b1 - self.params['y_c']) / (3 * self.params['k_c'])
+        ) ** 0.5
+        x3 = self.params['x_c']
+
+        y0 = 0
+        y1 = self.b1
+        y2 = self.params['y_c']
+        y3 = self.params['y_c']
+
+        cps = [
+            [x0, y0],
+            [x1, y1],
+            [x2, y2],
+            [x3, y3]
+        ]
+
+        return cps
+
+    def cp_tc(self) -> List[List[float]]:
+
+        x0 = self.params['x_c']
+        x1 = self.params['x_c'] + (
+                2 * (self.b1 - self.params['y_c']) / (3 * self.params['k_c'])
+        ) ** 0.5
+        x2 = 1 + (self.params['z_te'] - self.b1) * np.tan(
+            self.params['alpha_te']
+        ) ** -1
+        x3 = 1
+
+        y0 = self.params['y_c']
+        y1 = self.params['y_c']
+        y2 = self.b1
+        y3 = self.params['z_te']
+
+        cps = [
+            [x0, y0],
+            [x1, y1],
+            [x2, y2],
+            [x3, y3]
+        ]
+
+        return cps
+
+    def generate(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
+        """Generates Aerofoil Profile.
+
+        Returns
+        -------
+        x_u : np.ndarray
+            x-coordinates of the upper surface.
+        y_u : np.ndarray
+            y-coordinates of the upper surface.
+        x_l : np.ndarray
+            x-coordinates of the lower surface.
+        y_l : np.ndarray
+            y-coordinates of the lower surface.
+        """
+
+        cp_lt = self.cp_lt()
+        cp_tt = self.cp_tt()
+        cp_lc = self.cp_lc()
+        cp_tc = self.cp_tc()
+
+        thickness = np.concatenate((curve(cp_lt), curve(cp_tt)))
+        camber = np.concatenate((curve(cp_lc), curve(cp_tc)))
+        yt = np.interp(camber[:, 0], thickness[:, 0], thickness[:, 1])
+
+        dc = np.concatenate((dcurve(cp_lc), dcurve(cp_tc)))
+        theta = np.arctan(dc[:, 1] / dc[:, 0])
+
+        x_u = camber[:, 0] - yt / 2 * np.sin(theta)
+        x_l = camber[:, 0] + yt / 2 * np.sin(theta)
+        y_u = camber[:, 1] + yt / 2 * np.cos(theta)
+        y_l = camber[:, 1] - yt / 2 * np.cos(theta)
+
+        return x_u, y_u, x_l, y_l
 
     def _calculate_b1(self) -> Union[float, None]:
 
@@ -50,9 +167,9 @@ class BP3333:
                 np.tan(self.params['gamma_le']) ** -1 +
                 np.tan(self.params['alpha_te']) ** -1
         ) * (
-                1 + self.params['z_te'] *
-                np.tan(self.params['alpha_te']) ** -1
-        ))
+                      1 + self.params['z_te'] *
+                      np.tan(self.params['alpha_te']) ** -1
+              ))
 
         s2 = (6 * self.params['k_c'] * (
                 np.tan(self.params['gamma_le']) ** -1 +
@@ -60,7 +177,7 @@ class BP3333:
         ) * (1 - self.params['y_c'] * (
                 np.tan(self.params['gamma_le']) ** -1 +
                 np.tan(self.params['alpha_te']) ** -1
-        ) + (self.params['z_te'] * np.tan(self.params['alpha_te'])) ** -1))
+        ) + self.params['z_te'] * np.tan(self.params['alpha_te']) ** -1))
 
         s2 = np.array([-1, 1]) * 4 * (16 + s2) ** 0.5
 
@@ -141,10 +258,12 @@ class BP3333:
                 2 * (b - self.params['y_c']) / (3 * self.params['k_c'])
         ) ** 0.5 > b / np.tan(self.params['gamma_le'])
 
-        c3 = (1 + (self.params['z_te'] - b) * np.tan(self.params['alpha_te']) ** -1) > (
-                self.params['x_c'] +
-                (2 * (b - self.params['y_c']) / (3 * self.params['k_c'])) ** 0.5
-        )
+        c3 = (1 + (self.params['z_te'] - b) * np.tan(
+            self.params['alpha_te']) ** -1) > (
+                     self.params['x_c'] +
+                     (2 * (b - self.params['y_c']) / (
+                             3 * self.params['k_c'])) ** 0.5
+             )
 
         c4 = np.isreal(b)
 
