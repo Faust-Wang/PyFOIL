@@ -28,7 +28,8 @@ def bernstein(n: int, k: int) -> Callable[[np.ndarray], np.ndarray]:
     return bernstein_polynomial
 
 
-def curve(points: Sequence[Union[float, Sequence[float]]], num: int = 50) -> np.ndarray:
+def curve(points: Sequence[Union[Union[int, float], Sequence[Union[int, float]]]],
+          num: int = 50) -> np.ndarray:
 
     """Generates a Bezier Curve from a collection of points.
 
@@ -59,7 +60,7 @@ def curve(points: Sequence[Union[float, Sequence[float]]], num: int = 50) -> np.
         Coordinates of the generated Bezier Curve.
     """
 
-    arr_points = np.asarray(points)
+    arr_points = np.asarray(points, dtype=float)
 
     if not 0 < arr_points.ndim <= 2:
         raise ValueError('points must be 1D / 2D')
@@ -74,7 +75,8 @@ def curve(points: Sequence[Union[float, Sequence[float]]], num: int = 50) -> np.
     return bezier_curve
 
 
-def dcurve(points: Sequence[Union[float, Sequence[float]]], num: int = 50) -> np.ndarray:
+def dcurve(points: Sequence[Union[Union[int, float], Sequence[Union[int, float]]]],
+           num: int = 50) -> np.ndarray:
 
     """Derivatives of a Bezier Curve from a collection of points.
 
@@ -105,7 +107,7 @@ def dcurve(points: Sequence[Union[float, Sequence[float]]], num: int = 50) -> np
         Derivatives of the generated Bezier Curve.
     """
 
-    arr_points = np.asarray(points)
+    arr_points = np.asarray(points, dtype=float)
 
     if not 0 < arr_points.ndim <= 2:
         raise ValueError('points must be 1D / 2D')
