@@ -237,7 +237,7 @@ class BP3333:
         else:
             return min(b9)
 
-    def _b1constraint(self, b: float):
+    def _b1constraint(self, b: float) -> bool:
 
         """Checks if b1 satisfies constraints.
 
